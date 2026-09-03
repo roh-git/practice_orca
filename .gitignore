@@ -1,0 +1,8 @@
+node_modules/
+dist/
+dist-v3/
+.chrome-profile*/
+.chrome-test-profile/
+.starter-profile*/
+*-test.png
+*-final.png
