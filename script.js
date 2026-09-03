@@ -1,0 +1,171 @@
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+const BALLS = [
+  {id:'poke',name:'몬스터볼',desc:'야생 포켓몬을 잡기 위한 기본 볼',top:0xed1f2d,bottom:0xf8f7f2,band:0x111316,button:0xffffff,accent:'#ed1f2d',mark:''},
+  {id:'great',name:'슈퍼볼',desc:'몬스터볼보다 포획률이 높은 볼',top:0x126bd1,bottom:0xf7f6f1,band:0x101318,button:0xffffff,accent:'#ed303c',mark:'great'},
+  {id:'ultra',name:'하이퍼볼',desc:'높은 성능을 가진 상급 포획용 볼',top:0x121417,bottom:0xf6f4ed,band:0x08090b,button:0xffd21f,accent:'#ffd21f',mark:'ultra'},
+  {id:'master',name:'마스터볼',desc:'어떤 포켓몬도 반드시 잡는 최고의 볼',top:0x7935b1,bottom:0xf7f5f0,band:0x111217,button:0xffffff,accent:'#e565aa',mark:'master'},
+  {id:'premier',name:'프리미어볼',desc:'기념품으로 만들어진 특별한 볼',top:0xf2f1ec,bottom:0xf2f1ec,band:0xc83a3f,button:0xf2f1ec,accent:'#c83a3f',mark:'premier'},
+  {id:'luxury',name:'럭셔리볼',desc:'잡은 포켓몬과 친밀해지기 쉬운 고급 볼',top:0x0d0f12,bottom:0x15181c,band:0xe0ad25,button:0xf1bd2c,accent:'#e0ad25',mark:'luxury'}
+];
+
+const wrap=document.querySelector('#canvas-wrap'), tabs=document.querySelector('#ball-tabs');
+const title=document.querySelector('#ball-name'), description=document.querySelector('#ball-description');
+const guide=document.querySelector('#guide'), closeButton=document.querySelector('#close-button');
+const info=document.querySelector('#pokemon-info'), pokemonName=document.querySelector('#pokemon-name');
+const pokemonNumber=document.querySelector('#pokemon-number'), errorText=document.querySelector('#error');
+const pokemonTypes=document.querySelector('#pokemon-types'), pokemonHeight=document.querySelector('#pokemon-height');
+const pokemonWeight=document.querySelector('#pokemon-weight'), app=document.querySelector('#app');
+const pokemonGeneration=document.querySelector('#pokemon-generation');
+const stepOne=document.querySelector('#step-one'),stepTwo=document.querySelector('#step-two');
+
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(34,innerWidth/innerHeight,.1,100); camera.position.set(0,.3,9);
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.setSize(innerWidth,innerHeight); renderer.setClearColor(0,0);
+renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.outputColorSpace=THREE.SRGBColorSpace; renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=.92; wrap.append(renderer.domElement);
+const pmrem=new THREE.PMREMGenerator(renderer);scene.environment=pmrem.fromScene(new RoomEnvironment(),.04).texture;pmrem.dispose();
+scene.add(new THREE.HemisphereLight(0xffffff,0x43546b,1.8));
+const key=new THREE.DirectionalLight(0xffffff,3.7); key.position.set(-4,7,7); key.castShadow=true; scene.add(key);
+const rim=new THREE.DirectionalLight(0x78baff,2.5); rim.position.set(5,2,-4); scene.add(rim);
+
+const root=new THREE.Group(); root.rotation.set(.04,-.22,0); root.position.set(0,-.16,0); root.scale.setScalar(.78); scene.add(root);
+const lower=new THREE.Group(), hinge=new THREE.Group(); hinge.position.set(0,0,-2); root.add(lower,hinge);
+const topMat=new THREE.MeshPhysicalMaterial({roughness:.16,metalness:.02,clearcoat:1,clearcoatRoughness:.08});
+const bottomMat=new THREE.MeshPhysicalMaterial({roughness:.19,metalness:.01,clearcoat:1,clearcoatRoughness:.1});
+const bandMat=new THREE.MeshStandardMaterial({roughness:.3});
+const buttonMat=new THREE.MeshPhysicalMaterial({roughness:.16,clearcoat:1});
+const insideMat=new THREE.MeshStandardMaterial({color:0x20242a,roughness:.7,side:THREE.BackSide});
+const topShell=new THREE.Mesh(new THREE.SphereGeometry(2,64,32,0,Math.PI*2,0,Math.PI/2),topMat); topShell.position.z=2; topShell.castShadow=true; hinge.add(topShell);
+const innerTop=new THREE.Mesh(new THREE.SphereGeometry(1.84,48,24,0,Math.PI*2,0,Math.PI/2),insideMat); innerTop.position.z=2; hinge.add(innerTop);
+const topLip=new THREE.Mesh(new THREE.TorusGeometry(1.88,.055,20,128),new THREE.MeshPhysicalMaterial({color:0x343a40,metalness:.55,roughness:.22,clearcoat:1}));topLip.rotation.x=Math.PI/2;topLip.position.z=2;hinge.add(topLip);
+const bottomShell=new THREE.Mesh(new THREE.SphereGeometry(2,64,32,0,Math.PI*2,Math.PI/2,Math.PI/2),bottomMat); bottomShell.castShadow=true; lower.add(bottomShell);
+const innerBottom=new THREE.Mesh(new THREE.SphereGeometry(1.84,48,24,0,Math.PI*2,Math.PI/2,Math.PI/2),insideMat); lower.add(innerBottom);
+const band=new THREE.Mesh(new THREE.TorusGeometry(2.004,.075,24,128),bandMat); band.rotation.x=Math.PI/2; lower.add(band);
+const upperRim=new THREE.Mesh(new THREE.TorusGeometry(1.995,.025,16,128),new THREE.MeshStandardMaterial({color:0x596068,metalness:.7,roughness:.2}));upperRim.rotation.x=Math.PI/2;upperRim.position.y=.055;lower.add(upperRim);
+const lowerRim=upperRim.clone();lowerRim.position.y=-.055;lower.add(lowerRim);
+const outerButton=new THREE.Mesh(new THREE.CylinderGeometry(.53,.55,.22,64),bandMat); outerButton.rotation.x=Math.PI/2; outerButton.position.set(0,0,2.045); lower.add(outerButton);
+const buttonBezel=new THREE.Mesh(new THREE.TorusGeometry(.405,.045,20,64),new THREE.MeshPhysicalMaterial({color:0x737a81,metalness:.65,roughness:.18,clearcoat:1}));buttonBezel.position.set(0,0,2.17);lower.add(buttonBezel);
+const innerButton=new THREE.Mesh(new THREE.CylinderGeometry(.35,.35,.24,64),buttonMat); innerButton.rotation.x=Math.PI/2; innerButton.position.set(0,0,2.18); lower.add(innerButton);
+const buttonGlass=new THREE.Mesh(new THREE.CircleGeometry(.285,64),new THREE.MeshPhysicalMaterial({color:0xffffff,roughness:.05,transmission:.18,thickness:.2,clearcoat:1}));buttonGlass.position.set(0,0,2.31);lower.add(buttonGlass);
+const hingeBar=new THREE.Mesh(new THREE.CylinderGeometry(.13,.13,.72,32),new THREE.MeshStandardMaterial({color:0x252a2f,metalness:.8,roughness:.2}));hingeBar.rotation.z=Math.PI/2;hingeBar.position.set(0,.02,-2.01);lower.add(hingeBar);
+const energyCore=new THREE.Mesh(new THREE.CylinderGeometry(.62,.78,.12,64),new THREE.MeshPhysicalMaterial({color:0x7eeaff,emissive:0x28bce8,emissiveIntensity:2,transparent:true,opacity:.75,roughness:.1}));energyCore.position.y=.05;lower.add(energyCore);
+const coreLight=new THREE.PointLight(0x66ddff,0,5);coreLight.position.set(0,.45,0);lower.add(coreLight);
+const decalMat=new THREE.MeshBasicMaterial({transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2});
+const decal=new THREE.Mesh(new THREE.SphereGeometry(2.015,40,24,Math.PI/2-.66,1.32,.18,1.2),decalMat);decal.position.z=2;hinge.add(decal);
+
+const floor=new THREE.Mesh(new THREE.CircleGeometry(2.25,64),new THREE.ShadowMaterial({opacity:.14})); floor.rotation.x=-Math.PI/2; floor.position.set(0,-1.78,0); floor.receiveShadow=true; scene.add(floor);
+const revealGroup=new THREE.Group(); revealGroup.visible=false; scene.add(revealGroup);
+const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:makeGlowTexture(),transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false,opacity:0})); glow.scale.set(4.8,4.8,1); glow.renderOrder=9; revealGroup.add(glow);
+const pokemonSprite=new THREE.Sprite(new THREE.SpriteMaterial({transparent:true,depthWrite:false,depthTest:false,opacity:0,toneMapped:false}));pokemonSprite.renderOrder=10;pokemonSprite.scale.set(.01,.01,1);revealGroup.add(pokemonSprite);
+
+const controls=new OrbitControls(camera,renderer.domElement); controls.enableDamping=true; controls.dampingFactor=.08; controls.enablePan=false; controls.minDistance=6.6; controls.maxDistance=11; controls.autoRotate=true; controls.autoRotateSpeed=1;
+const loader=new THREE.TextureLoader();loader.setCrossOrigin('anonymous');
+const raycaster=new THREE.Raycaster(), pointer=new THREE.Vector2(), clock=new THREE.Clock();
+let state='closed',openProgress=0,revealProgress=0,selectionProgress=0,current=0,loadToken=0,hasSelectedBall=false;
+
+function makeGlowTexture(){const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d'),g=x.createRadialGradient(128,128,0,128,128,128);g.addColorStop(0,'#ffffff');g.addColorStop(.12,'#fffbd0');g.addColorStop(.35,'#ffe76d');g.addColorStop(.62,'#62d8ff88');g.addColorStop(1,'#ffffff00');x.fillStyle=g;x.fillRect(0,0,256,256);return new THREE.CanvasTexture(c)}
+/* Retired procedural Pokémon model experiments.
+function material(color,options={}){return new THREE.MeshPhysicalMaterial({color,roughness:.38,clearcoat:.35,...options})}
+function part(geometry,mat,position,scale=[1,1,1],parent){const mesh=new THREE.Mesh(geometry,mat);mesh.position.set(...position);mesh.scale.set(...scale);mesh.castShadow=true;mesh.receiveShadow=true;(parent||pokemonHolder).add(mesh);return mesh}
+const sphere=(r=1,segments=32)=>new THREE.SphereGeometry(r,segments,Math.max(16,segments/2));
+function eye(parent,x,y,z,iris=0x51352a){part(sphere(.12,24),material(0xffffff),[x,y,z],[1,.9,.35],parent);part(sphere(.067,20),material(iris,{roughness:.18}),[x,y+.004,z+.105],[1,1,.32],parent);part(sphere(.025,16),material(0xffffff,{emissive:0xffffff,emissiveIntensity:.4}),[x-.018,y+.025,z+.132],[1,1,.2],parent)}
+function mouth(parent,y,z,width=.18){const m=part(new THREE.TorusGeometry(width,.018,10,32,0,Math.PI),material(0x56282a),[0,y,z],[1,.65,1],parent);m.rotation.z=Math.PI}
+function clearPokemon(){while(pokemonHolder.children.length){const child=pokemonHolder.children.pop();child.traverse(o=>{o.geometry?.dispose();if(o.material){const mats=Array.isArray(o.material)?o.material:[o.material];mats.forEach(m=>m.dispose())}})}}
+function buildBulbasaur(){
+  const g=new THREE.Group(),skin=material(0x56b7a8),dark=material(0x277b70),claw=material(0xf3e7c8),leaf=material(0x3c9a55),leafDark=material(0x22713e);
+  part(sphere(1),skin,[0,.05,0],[.72,.55,.85],g);part(sphere(1),skin,[0,.58,.43],[.62,.5,.56],g);
+  [[-.42,-.38,.35],[.42,-.38,.35],[-.42,-.35,-.38],[.42,-.35,-.38]].forEach(([x,y,z])=>{part(sphere(.3),skin,[x,y,z],[.75,1,.75],g);part(new THREE.ConeGeometry(.055,.15,12),claw,[x,y-.27,z+.2],[1,1,1],g).rotation.x=Math.PI});
+  eye(g,-.24,.68,.91,0xc93939);eye(g,.24,.68,.91,0xc93939);mouth(g,.43,.96,.13);
+  [[-.42,.72,.82],[.42,.72,.82],[-.5,.17,.67],[.45,.08,.72]].forEach(p=>part(sphere(.09),dark,p,[1.4,.6,.25],g));
+  for(let i=0;i<6;i++){const a=i/6*Math.PI*2,l=part(new THREE.ConeGeometry(.42,1.05,5),leaf,[Math.cos(a)*.18,1.05,Math.sin(a)*.18],[.72,1,.72],g);l.rotation.z=-Math.cos(a)*.45;l.rotation.x=Math.sin(a)*.45}
+  part(sphere(.5,24),leafDark,[0,.98,0],[.75,.9,.75],g);g.rotation.y=-.08;return g
+}
+function buildCharmander(){
+  const g=new THREE.Group(),orange=material(0xf27a32),cream=material(0xffd28c),claw=material(0xfff0cf),black=material(0x181c22),blue=0x4a88b8;
+  part(sphere(1),orange,[0,.05,0],[.52,.78,.48],g);part(sphere(1),orange,[0,.75,.18],[.58,.52,.55],g);part(sphere(1),cream,[0,.02,.45],[.34,.55,.12],g);
+  eye(g,-.21,.84,.68,blue);eye(g,.21,.84,.68,blue);mouth(g,.59,.73,.14);
+  [[-.43,-.55,.2],[.43,-.55,.2]].forEach(([x,y,z])=>{part(sphere(.28),orange,[x,y,z],[1.2,.55,1.5],g);for(let i=-1;i<=1;i++)part(new THREE.ConeGeometry(.035,.13,10),claw,[x+i*.09,y-.03,z+.35],[1,1,1],g).rotation.x=Math.PI/2});
+  [[-.47,.12,.12],[.47,.12,.12]].forEach(([x,y,z],i)=>{const arm=part(new THREE.CapsuleGeometry(.13,.42,6,12),orange,[x,y,z],[1,1,1],g);arm.rotation.z=i?-.48:.48});
+  const tail=new THREE.Group();g.add(tail);for(let i=0;i<5;i++)part(sphere(.19-i*.018),orange,[.3+i*.19,-.08+i*.1,-.32-i*.05],[1,1,1],tail);
+  part(sphere(.25,24),material(0xffb21c,{emissive:0xff5b00,emissiveIntensity:2}),[1.13,.42,-.55],[.72,1.3,.72],g);part(sphere(.13),material(0xffff8a,{emissive:0xffd52a,emissiveIntensity:3}),[1.13,.48,-.47],[.65,1.2,.65],g);return g
+}
+function buildSquirtle(){
+  const g=new THREE.Group(),blueMat=material(0x58b9d4),belly=material(0xf2d59a),shell=material(0x9b633d),rimMat=material(0xe8c67c),claw=material(0xfff0d2);
+  part(sphere(1),shell,[0,.05,-.1],[.62,.75,.4],g);part(sphere(1),belly,[0,.03,.38],[.48,.65,.15],g);part(new THREE.TorusGeometry(.49,.065,16,48),rimMat,[0,.03,.53],[1,1.3,1],g);
+  part(sphere(1),blueMat,[0,.78,.25],[.55,.5,.52],g);eye(g,-.2,.86,.73,0x59311f);eye(g,.2,.86,.73,0x59311f);mouth(g,.64,.78,.13);
+  [[-.5,-.43,.2],[.5,-.43,.2]].forEach(([x,y,z])=>{part(sphere(.3),blueMat,[x,y,z],[1.15,.62,1.2],g);for(let i=-1;i<=1;i++)part(new THREE.ConeGeometry(.035,.12,10),claw,[x+i*.08,y-.03,z+.3],[1,1,1],g).rotation.x=Math.PI/2});
+  [[-.53,.18,.25],[.53,.18,.25]].forEach(([x,y,z],i)=>{const arm=part(new THREE.CapsuleGeometry(.14,.35,6,12),blueMat,[x,y,z],[1,1,1],g);arm.rotation.z=i?-.65:.65});
+  const tail=part(new THREE.TorusGeometry(.33,.13,18,40,Math.PI*1.55),blueMat,[.67,-.03,-.38],[1,1,1],g);tail.rotation.y=.7;tail.rotation.z=-.4;return g
+}
+const STARTERS={1:buildBulbasaur,4:buildCharmander,7:buildSquirtle};
+function showPokemonModel(id){clearPokemon();const model=STARTERS[id]();pokemonHolder.add(model);model.position.y=-.15;pokemonHolder.rotation.y=-.18}
+*/
+function preparePokemonTexture(texture){texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=renderer.capabilities.getMaxAnisotropy();texture.minFilter=THREE.LinearMipmapLinearFilter;texture.magFilter=THREE.LinearFilter;texture.needsUpdate=true;return texture}
+function makeMark(type){const c=document.createElement('canvas');c.width=512;c.height=280;const x=c.getContext('2d');x.lineCap='round';x.lineJoin='round';if(type==='great'){x.strokeStyle='#d8323d';x.lineWidth=58;x.beginPath();x.moveTo(55,55);x.lineTo(165,160);x.moveTo(457,55);x.lineTo(347,160);x.stroke()}if(type==='ultra'){x.fillStyle='#f3c625';x.fillRect(92,0,62,190);x.fillRect(358,0,62,190);x.fillRect(92,78,328,60)}if(type==='master'){x.fillStyle='#f3e9ed';x.font='bold 170px Arial';x.textAlign='center';x.fillText('M',256,175);x.fillStyle='#e06fa8';x.beginPath();x.arc(75,55,38,0,Math.PI*2);x.arc(437,55,38,0,Math.PI*2);x.fill()}if(type==='premier'){x.strokeStyle='#c7353d';x.lineWidth=35;x.beginPath();x.moveTo(100,20);x.lineTo(256,185);x.lineTo(412,20);x.stroke()}if(type==='luxury'){x.strokeStyle='#d9ad32';x.lineWidth=32;x.beginPath();x.moveTo(75,15);x.lineTo(256,178);x.lineTo(437,15);x.moveTo(160,0);x.lineTo(256,105);x.lineTo(352,0);x.stroke()}const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t}
+function setBall(index,selected=true){closeBall(true);current=index;hasSelectedBall=selected;const b=BALLS[index];topMat.color.setHex(b.top);bottomMat.color.setHex(b.bottom);bandMat.color.setHex(b.band);buttonMat.color.setHex(b.button);if(decalMat.map)decalMat.map.dispose();decalMat.map=makeMark(b.mark);decalMat.needsUpdate=true;decal.visible=!!b.mark;title.textContent=b.name;description.textContent=b.desc;document.documentElement.style.setProperty('--accent',b.accent);[...tabs.children].forEach((el,i)=>{el.classList.toggle('active',selected&&i===index);el.setAttribute('aria-selected',selected&&i===index)});root.visible=selected;floor.visible=selected;root.rotation.y=-.8;if(selected){state='selecting';selectionProgress=0;root.scale.setScalar(.05);root.position.set(0,.45,0);controls.autoRotate=false;stepOne.className='done';stepTwo.className='';guide.innerHTML='<span>READY</span>선택한 몬스터볼을 준비하고 있어요'}else{stepOne.className='active';stepTwo.className='';guide.innerHTML='<span>STEP 01</span>아래에서 몬스터볼을 선택하세요'}}
+BALLS.forEach((b,i)=>{const button=document.createElement('button');button.className='ball-tab';button.type='button';button.role='tab';button.style.cssText=`--tab-color:${b.accent};--tab-top:#${b.top.toString(16).padStart(6,'0')};--tab-bottom:#${b.bottom.toString(16).padStart(6,'0')};--tab-button:#${b.button.toString(16).padStart(6,'0')}`;button.innerHTML=`<span class="tab-ball"></span><span>${b.name}</span>`;button.addEventListener('click',()=>setBall(i,true));tabs.append(button)});
+
+const GENERATIONS={'generation-i':'1세대','generation-ii':'2세대','generation-iii':'3세대','generation-iv':'4세대','generation-v':'5세대','generation-vi':'6세대','generation-vii':'7세대','generation-viii':'8세대','generation-ix':'9세대'};
+async function loadPokemon(){
+  const token=++loadToken,id=Math.floor(Math.random()*1025)+1;errorText.textContent='';
+  try{
+    const response=await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`);if(!response.ok)throw Error();
+    const data=await response.json();
+    const [species,texture]=await Promise.all([
+      fetch(data.species.url).then(r=>{if(!r.ok)throw Error();return r.json()}),
+      loader.loadAsync(data.sprites.other['official-artwork'].front_default||data.sprites.front_default).then(preparePokemonTexture)
+    ]);
+    if(token!==loadToken){texture.dispose();return}
+    pokemonSprite.material.map?.dispose();pokemonSprite.material.map=texture;pokemonSprite.material.needsUpdate=true;
+    pokemonName.textContent=species.names.find(({language})=>language.name==='ko')?.name||`포켓몬 ${data.id}`;
+    pokemonNumber.textContent=`NO. ${String(data.id).padStart(4,'0')}`;
+    pokemonGeneration.textContent=GENERATIONS[species.generation.name]||species.generation.name;
+    pokemonTypes.innerHTML=data.types.map(({type})=>`<span class="type-chip">${type.name}</span>`).join('');
+    pokemonHeight.textContent=`${(data.height/10).toFixed(1)} m`;pokemonWeight.textContent=`${(data.weight/10).toFixed(1)} kg`;startReveal();
+  }catch{
+    if(token!==loadToken)return;
+    try{const texture=preparePokemonTexture(await loader.loadAsync(`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`));pokemonSprite.material.map=texture;pokemonSprite.material.needsUpdate=true;pokemonName.textContent=`포켓몬 ${id}`;pokemonNumber.textContent=`NO. ${String(id).padStart(4,'0')}`;pokemonGeneration.textContent='정보 없음';pokemonTypes.innerHTML='<span class="type-chip">unknown</span>';pokemonHeight.textContent='—';pokemonWeight.textContent='—';startReveal()}catch{errorText.textContent='포켓몬 이미지를 불러오지 못했어요.'}
+  }
+}
+function pokemonResultX(){return innerWidth<=900?-.82:innerWidth<=1200?-.42:0}
+function startReveal(){revealGroup.visible=true;revealGroup.position.set(pokemonResultX(),-.05,1.45);revealProgress=.001;info.classList.add('show');stepTwo.className='done'}
+function openBall(){if(state!=='closed')return;state='opening';openProgress=0;guide.style.opacity=0;controls.autoRotate=false;app.classList.remove('is-drawing');void app.offsetWidth;app.classList.add('is-drawing');loadPokemon()}
+function closeBall(instant=false){loadToken++;state='closed';openProgress=revealProgress=0;hinge.rotation.x=0;root.position.set(0,-.16,0);root.scale.setScalar(.78);revealGroup.visible=false;pokemonSprite.material.opacity=0;pokemonSprite.scale.set(.01,.01,1);glow.material.opacity=0;coreLight.intensity=0;info.classList.remove('show');app.classList.remove('is-drawing');closeButton.hidden=true;guide.style.opacity=1;errorText.textContent='';controls.autoRotate=true;if(hasSelectedBall)stepTwo.className='active';if(!instant)root.rotation.y=-.22}
+renderer.domElement.addEventListener('pointerup',e=>{if(state!=='closed'||!hasSelectedBall)return;const r=renderer.domElement.getBoundingClientRect();pointer.set((e.clientX-r.left)/r.width*2-1,-((e.clientY-r.top)/r.height*2-1));raycaster.setFromCamera(pointer,camera);if(raycaster.intersectObject(root,true).length)openBall()});closeButton.addEventListener('click',()=>closeBall());
+function animate(){
+  requestAnimationFrame(animate);
+  const dt=Math.min(clock.getDelta(),.04);
+  if(state==='selecting'){
+    selectionProgress=Math.min(1,selectionProgress+dt/.46);
+    const e=1-Math.pow(1-selectionProgress,3);
+    root.scale.setScalar(THREE.MathUtils.lerp(.05,.78,e));
+    root.position.y=THREE.MathUtils.lerp(.45,-.16,e);
+    root.rotation.y=THREE.MathUtils.lerp(-.8,-.22,e);
+    if(selectionProgress===1){state='closed';controls.autoRotate=true;stepTwo.className='active';guide.innerHTML='<span>STEP 02</span>몬스터볼을 클릭하여 나의 스타팅 포켓몬을 뽑아보세요'}
+  }else if(state==='opening'){
+    openProgress=Math.min(1,openProgress+dt/.92);
+    const e=1-Math.pow(1-openProgress,3);
+    hinge.rotation.x=-e*1.32;
+    root.scale.setScalar(THREE.MathUtils.lerp(.78,.59,e));
+    root.position.x=THREE.MathUtils.lerp(0,-.78,e);
+    root.position.y=THREE.MathUtils.lerp(-.16,-.72,e);
+    root.position.z=THREE.MathUtils.lerp(0,-1.15,e);
+    if(openProgress===1){state='open';closeButton.hidden=false}
+  }
+  if(revealProgress>0&&revealProgress<1){
+    revealProgress=Math.min(1,revealProgress+dt/.68);
+    const e=1-Math.pow(1-revealProgress,3);
+    revealGroup.position.y=-.05+e*.72;
+    const finalPokemonScale=innerWidth<=900?1.34:innerWidth<=1200?1.48:1.58;
+    const s=THREE.MathUtils.lerp(.05,finalPokemonScale,e);
+    pokemonSprite.scale.set(s,s,1);pokemonSprite.material.opacity=Math.min(1,e*2);
+    glow.material.opacity=Math.sin(Math.min(1,e)*Math.PI)*1.2+.25*(1-e);
+    coreLight.intensity=Math.sin(e*Math.PI)*4;
+  }else if(revealProgress===1){glow.material.opacity=.16+Math.sin(performance.now()*.003)*.05;coreLight.intensity=.7}
+  controls.update();renderer.render(scene,camera)
+}
+setBall(0,false);animate();addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);if(revealGroup.visible)revealGroup.position.x=pokemonResultX()});

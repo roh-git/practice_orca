@@ -1,0 +1,15 @@
+{
+  "name": "pokemon-gacha-widget",
+  "version": "1.0.0",
+  "description": "3D 몬스터볼 포켓몬 가챠 Windows 바탕화면 위젯",
+  "main": "electron-main.cjs",
+  "scripts": {"start": "electron .", "dist": "electron-builder --win portable"},
+  "devDependencies": {"electron": "43.2.0", "electron-builder": "26.0.12"},
+  "build": {
+    "appId": "com.pokegacha.widget",
+    "productName": "Pokemon Gacha Widget",
+    "files": ["monsterball-3d.html", "electron-main.cjs", "electron-preload.cjs", "package.json"],
+    "asar": true,
+    "win": {"target": "portable", "artifactName": "Pokemon-Gacha-Widget-${version}.exe", "signAndEditExecutable": false}
+  }
+}
